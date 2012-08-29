@@ -14,16 +14,23 @@ $(function() {
 
 	window.down = {};
 	var beingDragged;
+	var holdTimer;
 
 	$("ul").bind('mousedown', function(e) {
 		down.x = e.pageX - e.target.offsetLeft;
 		down.y = e.pageY - e.target.offsetTop;
 		beingDragged = $(e.target);
-		beingDragged.addClass("dragged");
-	}).hammer({prevent_default:true}).bind("drag", function(e) {
-		//throttle(onDrag, window, e);
-		onDrag(e);
+
+		holdTimer = setTimeout(function() {
+			beingDragged.addClass("dragged");
+			$("ul").hammer({prevent_default:true}).bind("drag", function(e) {
+				//throttle(onDrag, window, e);
+				onDrag(e);
+			});
+		}, 1000);
 	}).bind('mouseup', function(e) {
+		clearTimeout(holdTimer);
+		$("ul").unbind('drag');
 		$("li").removeClass("dragged");
 	});
 

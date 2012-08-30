@@ -13,26 +13,53 @@ $(function() {
 	}
 
 	window.down = {};
+	window.start = {};
+	window.move = {x:0,y:0};
 	var beingDragged;
 	var holdTimer;
 
-	$("ul").bind('mousedown', function(e) {
-		down.x = e.pageX - e.target.offsetLeft;
-		down.y = e.pageY - e.target.offsetTop;
-		beingDragged = $(e.target);
+	$("ul").hammer({prevent_default:true}).bind('mousedown', function(e) {
 
-		holdTimer = setTimeout(function() {
-			beingDragged.addClass("dragged");
-			$("ul").hammer({prevent_default:true}).bind("drag", function(e) {
-				//throttle(onDrag, window, e);
-				onDrag(e);
-			});
-		}, 1000);
+		if(e.target.tagName === "LI") {
+
+			start = {
+				x: e.pageX,
+				y: e.pageY
+			};
+			down = {
+				x: e.pageX - e.target.offsetLeft,
+				y: e.pageY - e.target.offsetTop
+			};
+			beingDragged = $(e.target);
+
+			$("ul").bind('mousemove', onMouseMove);
+
+			holdTimer = setTimeout(function() {
+				if((move.x === 0 && move.y === 0) || Math.sqrt(Math.pow(move.x - start.x, 2) + Math.pow(move.y - start.y, 2)) < 30) {
+					beingDragged.addClass("dragged");
+					$("ul").bind("drag", function(e) {
+						//throttle(onDrag, window, e);
+						onDrag(e);
+					});
+				} else {
+					$("ul").unbind('mousemove', onMouseMove);
+					move = {x:0,y:0};
+				}
+			}, 1000);
+
+		}
+
 	}).bind('mouseup', function(e) {
 		clearTimeout(holdTimer);
 		$("ul").unbind('drag');
+		$("ul").unbind('mousemove', onMouseMove);
 		$("li").removeClass("dragged");
 	});
+
+	function onMouseMove(e) {
+		move.x = e.pageX;
+		move.y = e.pageY;
+	}
 
 	function onDrag(e) {
 

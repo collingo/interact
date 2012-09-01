@@ -31,8 +31,9 @@ body > ul > li {
 	margin:0 20px 20px 0;
 	position:absolute;
 	-webkit-transform: translateZ(0);
+	-moz-transition: background 0.2s;
 }
-body > ul li.dragged {
+body > ul li.dragging {
 	z-index:100;
 	background:pink;
 	cursor:move;

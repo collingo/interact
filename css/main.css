@@ -23,8 +23,10 @@ ul li {
 	background:lightgreen;
 	margin:0 20px 20px 0;
 	position:absolute;
+	-webkit-transform: translateZ(0);
 }
 ul li.dragged {
 	z-index:100;
 	background:pink;
+	cursor:move;
 }

@@ -36,6 +36,8 @@ $(function() {
 		this.element
 			.on(this.events.start, this.onStart.bind(this))
 			.on(this.events.end, this.onEnd.bind(this));
+		// this.element[0].addEventListener(this.events.start, this.onStart.bind(this), true);
+		// this.element[0].addEventListener(this.events.end, this.onEnd.bind(this), true);
 	}
 	Push.prototype = {
 		constructor: Push,
@@ -49,6 +51,8 @@ $(function() {
 
 		// handlers
 		onStart: function(e) {
+			e.preventDefault();
+			e.stopPropagation();
 			if(e.target.tagName === "LI") {
 
 				this.start = this.hold = this.grab = this.getCoordsFromEvent.call(this, e);
@@ -110,6 +114,15 @@ $(function() {
 		});
 	}
 
+	window.mySwipe = new Swipe(document.getElementById('slider'), {
+	    speed: 400,
+	    auto: 0,
+	    callback: function(event, index, elem) {
+
+	      // do something cool
+
+	    }
+	});
 	var push = new Push($("ul"));
 
 });

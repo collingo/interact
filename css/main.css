@@ -31,7 +31,11 @@ body > ul > li {
 	margin:0 20px 20px 0;
 	position:absolute;
 	-webkit-transform: translateZ(0);
+	-webkit-transition: background 0.2s;
 	-moz-transition: background 0.2s;
+	-ms-transition: background 0.2s;
+	-o-transition: background 0.2s;
+	transition: background 0.2s;
 }
 body > ul li.dragging {
 	z-index:100;

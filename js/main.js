@@ -25,17 +25,18 @@ $(function() {
 	}
 
 	function Push(options) {
-		if(!options.hasOwnProperty("element")) {
+		if(options && !options.hasOwnProperty("element")) {
 			return;
 		}
 
 		// cache options
 		this.options = $.extend({
+			element: $("html"),
 			draggableSelector: "li",
 			draggingClass: "dragging",
 			dragActiveDelay: 200,
 			dragCancelThreshold: 30
-		}, options);
+		}, options || {});
 
 		// cache elements
 		this.element = $(this.options.element);
@@ -142,8 +143,6 @@ $(function() {
 
 	    }
 	});
-	var push = new Push({
-		element: $("ul")
-	});
+	window.push = new Push();
 
 });

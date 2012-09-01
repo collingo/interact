@@ -51,8 +51,6 @@ $(function() {
 
 		// handlers
 		onStart: function(e) {
-			e.preventDefault();
-			e.stopPropagation();
 			if(e.target.tagName === "LI") {
 
 				this.start = this.hold = this.grab = this.getCoordsFromEvent.call(this, e);

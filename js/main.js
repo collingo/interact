@@ -1,96 +1,115 @@
 $(function() {
 
-	var safe = 1,
-		beingDragged,
-		holdTimer,
-		grab = {},
-		start = {},
-		hold = {x:0,y:0},
-		element = $("ul"),
-		currentTarget,
-		onStartEvent,
-		eventDefinition = {
-			mouse: {
-				start: "mousedown",
-				move: "mousemove",
-				end: "mouseup"
-			},
-			touch: {
-				start: "touchstart",
-				move: "touchmove",
-				end: "touchend"
+	if(!Function.prototype.bind) {
+		Function.prototype.bind = function (oThis) {
+			if (typeof this !== "function") {
+				// closest thing possible to the ECMAScript 5 internal IsCallable function
+				throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
 			}
+
+			var aArgs = Array.prototype.slice.call(arguments, 1), 
+				fToBind = this, 
+				fNOP = function () {},
+				fBound = function () {
+					return fToBind.apply(this instanceof fNOP && oThis
+										 ? this
+										 : oThis,
+									   aArgs.concat(Array.prototype.slice.call(arguments)));
+				};
+
+			fNOP.prototype = this.prototype;
+			fBound.prototype = new fNOP();
+
+			return fBound;
 		};
-
-	if('ontouchstart' in window) {
-		events = eventDefinition.touch;
-	} else {
-		events = eventDefinition.mouse;
 	}
 
-	// utility
-	function throttle(method, scope, e) {
-		if(safe) {
-			safe = 0;
-			method.call(scope, e);
-			method._tId = setTimeout(function(){
-				safe = 1;
-			}, 17);
-		}
-	}
+	function Push(element) {
+		this.element = $(element);
 
-	function getXYfromEvent( event ) {
-		if(event.originalEvent.hasOwnProperty("touches")) {
-			return { x: event.originalEvent.touches[0].pageX, y: event.originalEvent.touches[0].pageY };
-		} else {
+		// cache handlers bound to this
+		this.boundMoveDuringHold = this.onMoveDuringHold.bind(this);
+		this.boundMoveDuringDrag = this.onMoveDuringDrag.bind(this);
+		this.boundHoldTimerComplete = this.onHoldTimerComplete.bind(this);
+
+		// initialise
+		this.element
+			.on(this.events.start, this.onStart.bind(this))
+			.on(this.events.end, this.onEnd.bind(this));
+	}
+	Push.prototype = {
+		constructor: Push,
+
+		// properties
+		events: {
+			start: "mousedown",
+			move: "mousemove",
+			end: "mouseup"
+		},
+
+		// handlers
+		onStart: function(e) {
+			if(e.target.tagName === "LI") {
+
+				this.start = this.hold = this.grab = this.getCoordsFromEvent.call(this, e);
+				this.grab.x = this.grab.x - e.target.offsetLeft;
+				this.grab.y = this.grab.y - e.target.offsetTop;
+				this.currentTarget = $(e.target);
+				this.currentStartEvent = e;
+
+				this.element.on(this.events.move, this.boundMoveDuringHold);
+
+				this.holdTimer = setTimeout(this.onHoldTimerComplete.bind(this), 200);
+
+			}
+		},
+
+		onHoldTimerComplete: function() {
+			this.element.off(this.events.move, this.onMoveDuringHold.bind(this));
+			if(Math.sqrt(Math.pow(this.hold.x - this.start.x, 2) + Math.pow(this.hold.y - this.start.y, 2)) < 30) {
+				this.currentStartEvent.preventDefault();
+				this.currentTarget.addClass("dragged");
+				this.element.on(this.events.move, this.boundMoveDuringDrag);
+			}
+		},
+
+		onMoveDuringHold: function(e) {
+			this.hold = this.getCoordsFromEvent.call(this, e);
+		},
+
+		onMoveDuringDrag: function(e) {
+			var coords = this.getCoordsFromEvent.call(this, e);
+			e.preventDefault();
+			this.currentTarget.css({top:(coords.y || this.start.y) - this.grab.y, left:(coords.x || this.start.x) - this.grab.x});
+		},
+
+		onEnd: function(e) {
+			clearTimeout(this.holdTimer);
+			this.element.off(this.events.move, this.boundMoveDuringHold);
+			this.element.off(this.events.move, this.boundMoveDuringDrag);
+			$("li").removeClass("dragged");
+		},
+
+		// utility
+		getCoordsFromEvent: function( event ) {
 			return { x: event.pageX, y: event.pageY };
 		}
 	}
 
-	// methods
-	function onStart(e) {
-		if(e.target.tagName === "LI") {
-
-			start = hold = getXYfromEvent(e);
-			grab.x = start.x - e.target.offsetLeft;
-			grab.y = start.y - e.target.offsetTop;
-			currentTarget = $(e.target);
-			onStartEvent = e;
-
-			element.bind(events.move, onMoveDuringHold);
-
-			holdTimer = setTimeout(onHoldTimerComplete, 200);
-
-		}
+	// override prototype with touch specific properties and methods
+	if('ontouchstart' in window) {
+		$.extend(Push.prototype, {
+			events : {
+				start: "touchstart",
+				move: "touchmove",
+				end: "touchend"
+			},
+			getCoordsFromEvent: function( event ) {
+				return { x: event.originalEvent.touches[0].pageX, y: event.originalEvent.touches[0].pageY };
+			}
+		});
 	}
 
-	function onHoldTimerComplete() {
-		element.unbind(events.move, onMoveDuringHold);
-		if(Math.sqrt(Math.pow(hold.x - start.x, 2) + Math.pow(hold.y - start.y, 2)) < 30) {
-			onStartEvent.preventDefault();
-			currentTarget.addClass("dragged");
-			element.bind(events.move, onMoveDuringDrag);
-		}
-	}
-
-	function onMoveDuringHold(e) {
-		hold = getXYfromEvent(e);
-	}
-
-	function onMoveDuringDrag(e) {
-		var coords = getXYfromEvent(e);
-		e.preventDefault();
-		currentTarget.css({top:(coords.y || start.y) - grab.y, left:(coords.x || start.x) - grab.x});
-	}
-
-	function onEnd(e) {
-		clearTimeout(holdTimer);
-		element.unbind(events.move, onMoveDuringHold);
-		element.unbind(events.move, onMoveDuringDrag);
-		$("li").removeClass("dragged");
-	}
-
-	// setup initial binds
-	element.bind(events.start, onStart).bind(events.end, onEnd);
+	var push = new Push($("ul"));
 
 });

@@ -19,6 +19,7 @@ $(function() {
 		}
 	}
 
+	// normalising touch events into mouse events
 	function touchHandler(event) {
 		var touches = event.changedTouches,
 			first = touches[0],
@@ -45,9 +46,7 @@ $(function() {
 	document.addEventListener("touchcancel", touchHandler, true); 
 
 
-
-	element.hammer({prevent_default:true}).bind('mousedown', onStart).bind('mouseup', onEnd);
-
+	// methods
 	function onStart(e) {
 
 		if(e.target.tagName === "LI") {
@@ -63,15 +62,13 @@ $(function() {
 			holdTimer = setTimeout(onHoldTimerComplete, 200);
 
 		}
-
 	}
 
 	function onHoldTimerComplete() {
 		element.unbind('mousemove', onMoveDuringHold);
 		if(Math.sqrt(Math.pow(hold.x - start.x, 2) + Math.pow(hold.y - start.y, 2)) < 30) {
-			element.bind("drag", onMoveDuringDrag);
-			// element.bind('mousemove', onMouseMoveDuringDrag);
 			beingDragged.addClass("dragged");
+			element.bind('mousemove', onMoveDuringDrag);
 		}
 	}
 
@@ -81,17 +78,19 @@ $(function() {
 	}
 
 	function onMoveDuringDrag(e) {
-		var touches = e.originalEvent.touches || [e.originalEvent];
-		for(var t=0; t<touches.length; t++) {
-			$(beingDragged).css({top:e.touches[0].y - grab.y, left:e.touches[0].x - grab.x});
-		}
+		var x = e.clientX || start.x,
+			y = e.clientY || start.y;
+		beingDragged.css({top:y - grab.y, left:x - grab.x});
 	}
 
 	function onEnd(e) {
 		clearTimeout(holdTimer);
-		element.unbind('drag');
 		element.unbind('mousemove', onMoveDuringHold);
+		element.unbind('mousemove', onMoveDuringDrag);
 		$("li").removeClass("dragged");
 	}
+
+	// setup initial binds	
+	element.bind('mousedown', onStart).bind('mouseup', onEnd);
 
 });

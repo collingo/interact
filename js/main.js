@@ -38,13 +38,14 @@ $(function() {
 
 		// cache elements
 		this.element = $(this.options.element);
+		this.start = this.offset = this.grab = this.hold = this.drag = {};
 
 		// cache key handlers bound to this
 		this.boundStart = this.onStart.bind(this);
 		this.boundMoveDuringHold = this.onMoveDuringHold.bind(this);
 		this.boundCancelHold = this.onCancelHold.bind(this);
 		this.boundMoveDuringDrag = this.onMoveDuringDrag.bind(this);
-		this.boundFinishDrag = this.onDragEnd.bind(this);
+		this.boundendDrag = this.onDragEnd.bind(this);
 		this.boundHoldTimerComplete = this.onHoldTimerComplete.bind(this);
 
 	}
@@ -75,15 +76,40 @@ $(function() {
 				.on(this.events.start, this.boundStart);
 		},
 
-		setToHoldState: function() {
-			this.element
-				.off(this.events.start, this.boundStart)
-				.on(this.events.move, this.boundMoveDuringHold)
-				.on(this.events.end, this.boundCancelHold);
-			this.holdTimer = setTimeout(this.boundHoldTimerComplete, this.options.dragActiveDelay);
+		beginHold: function() {
+			if(this.currentTarget.is(this.options.draggableSelector)) {
+
+				this.hold = this.start;
+
+				this.element
+					.off(this.events.start, this.boundStart)
+					.on(this.events.move, this.boundMoveDuringHold)
+					.on(this.events.end, this.boundCancelHold);
+
+				this.offset = this.currentTarget.offset();
+				this.grab.x = this.start.x - this.offset.left;
+				this.grab.y = this.start.y - this.offset.top;
+
+				this.holdTimer = setTimeout(this.boundHoldTimerComplete, this.options.dragActiveDelay);
+
+			}
 		},
 
-		setToDragState: function() {
+		cancelHold: function() {
+			clearTimeout(this.holdTimer);
+			this.element
+				.off(this.events.move, this.boundMoveDuringHold)
+				.off(this.events.end, this.boundCancelHold);
+		},
+
+		endHold: function() {
+			this.element.off(this.events.move, this.onMoveDuringHold.bind(this));
+			if(Math.sqrt(Math.pow(this.hold.x - this.start.x, 2) + Math.pow(this.hold.y - this.start.y, 2)) < this.options.dragCancelThreshold) {
+				this.beginDrag.call(this);
+			}
+		},
+
+		beginDrag: function() {
 			this.currentTarget
 				.addClass(this.options.draggingClass)
 				.css({
@@ -100,20 +126,17 @@ $(function() {
 				.off(this.events.move, this.boundMoveDuringHold)
 				.off(this.events.end, this.boundCancelHold)
 				.on(this.events.move, this.boundMoveDuringDrag)
-				.on(this.events.end, this.boundFinishDrag);
+				.on(this.events.end, this.boundendDrag);
 		},
 
-		cancelHold: function() {
-			clearTimeout(this.holdTimer);
-			this.element
-				.off(this.events.move, this.boundMoveDuringHold)
-				.off(this.events.end, this.boundCancelHold);
+		duringDrag: function() {
+			this.currentTarget.css({top:(this.drag.y || this.start.y) - this.grab.y, left:(this.drag.x || this.start.x) - this.grab.x});
 		},
 
-		finishDrag: function() {
+		endDrag: function() {
 			this.element
 				.off(this.events.move, this.boundMoveDuringDrag)
-				.off(this.events.end, this.boundFinishDrag);
+				.off(this.events.end, this.boundendDrag);
 			this.currentTarget
 				.removeClass(this.options.draggingClass)
 				.css({"z-index":""});
@@ -122,33 +145,12 @@ $(function() {
 		// handlers
 		onStart: function(e) {
 			this.currentTarget = $(e.target);
-			if(this.currentTarget.is(this.options.draggableSelector)) {
-
-				this.start = this.hold = this.grab = this.getCoordsFromEvent.call(this, e);
-				this.offset = this.currentTarget.offset();
-				this.grab.x = this.grab.x - this.offset.left;
-				this.grab.y = this.grab.y - this.offset.top;
-
-				this.setToHoldState.call(this);
-
-			}
-		},
-
-		onHoldTimerComplete: function() {
-			this.element.off(this.events.move, this.onMoveDuringHold.bind(this));
-			if(Math.sqrt(Math.pow(this.hold.x - this.start.x, 2) + Math.pow(this.hold.y - this.start.y, 2)) < this.options.dragCancelThreshold) {
-				this.setToDragState.call(this);
-			}
+			this.start = this.getCoordsFromEvent.call(this, e);
+			this.beginHold.call(this);
 		},
 
 		onMoveDuringHold: function(e) {
 			this.hold = this.getCoordsFromEvent.call(this, e);
-		},
-
-		onMoveDuringDrag: function(e) {
-			this.drag = this.getCoordsFromEvent.call(this, e);
-			e.preventDefault();
-			this.currentTarget.css({top:(this.drag.y || this.start.y) - this.grab.y, left:(this.drag.x || this.start.x) - this.grab.x});
 		},
 
 		onCancelHold: function(e) {
@@ -156,8 +158,18 @@ $(function() {
 			this.setToInitialState.call(this);
 		},
 
+		onHoldTimerComplete: function() {
+			this.endHold.call(this);
+		},
+
+		onMoveDuringDrag: function(e) {
+			e.preventDefault();
+			this.drag = this.getCoordsFromEvent.call(this, e);
+			this.duringDrag.call(this);
+		},
+
 		onDragEnd: function(e) {
-			this.finishDrag.call(this);
+			this.endDrag.call(this);
 			this.setToInitialState.call(this);
 		},
 
@@ -207,15 +219,15 @@ $(function() {
 		constructor: Order,
 
 		// methods
-		setToDragState: function() {
-			Push.prototype.setToDragState.call(this);
+		beginDrag: function() {
+			Push.prototype.beginDrag.call(this);
 			this.currentTarget
 				.css({position:"absolute",top:this.offset.top, left:this.offset.left})
 				.after($('<li class="placeholder" style="height:'+this.currentTarget.outerHeight()+'px;width:'+this.currentTarget.outerWidth()+'px;"></li>'));
 		},
 
-		finishDrag: function(e) {
-			Push.prototype.finishDrag.call(this);
+		endDrag: function(e) {
+			Push.prototype.endDrag.call(this);
 			if(this.start.x === this.drag.x && this.start.y === drag.hold.y) {
 				this.finishReturn.call(this);
 			} else {
@@ -250,7 +262,7 @@ $(function() {
 
 		// handlers
 		onDragEnd: function(e) {
-			this.finishDrag.call(this);
+			this.endDrag.call(this);
 		},
 		onReturn: function(e) {
 			this.finishReturn.call(this);

@@ -40,6 +40,7 @@ $(function() {
 		this.element = $(this.options.element);
 
 		// cache key handlers bound to this
+		this.boundStart = this.onStart.bind(this);
 		this.boundMoveDuringHold = this.onMoveDuringHold.bind(this);
 		this.boundCancelHold = this.onHoldEnd.bind(this);
 		this.boundMoveDuringDrag = this.onMoveDuringDrag.bind(this);
@@ -59,11 +60,12 @@ $(function() {
 
 		// methods
 		init: function() {
-			this.element.on(this.events.start, this.onStart.bind(this));
+			this.element.on(this.events.start, this.boundStart);
 		},
 
 		setToHoldState: function() {
 			this.element
+				.off(this.events.start, this.boundStart)
 				.on(this.events.move, this.boundMoveDuringHold)
 				.on(this.events.end, this.boundCancelHold);
 			this.holdTimer = setTimeout(this.boundHoldTimerComplete, this.options.dragActiveDelay);
@@ -90,7 +92,8 @@ $(function() {
 		finishDrag: function() {
 			this.element
 				.off(this.events.move, this.boundMoveDuringDrag)
-				.off(this.events.end, this.boundFinishDrag);
+				.off(this.events.end, this.boundFinishDrag)
+				.on(this.events.start, this.boundStart);
 			this.currentTarget
 				.removeClass(this.options.draggingClass)
 				.css({"z-index":""});
@@ -201,6 +204,7 @@ $(function() {
 					"transition-property": "top, left",
 					"transition-duration": this.options.returnSpeed+"s"
 				});
+			this.element.off(this.events.start, this.boundStart);
 		},
 
 		setToInitialState: function() {
@@ -208,7 +212,16 @@ $(function() {
 			this.currentTarget
 				.removeClass(this.options.returningClass)
 				.off(this.options.returnEvents, this.boundOnReturn)
+				.css({
+					"z-index": "",
+					top:"",
+					left:"",
+					position: "",
+					"transition-property": "",
+					"transition-duration": ""
+				})
 				.removeAttr("style");
+			this.element.on(this.events.start, this.boundStart);
 		},
 
 		// handlers

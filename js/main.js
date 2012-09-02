@@ -42,7 +42,7 @@ $(function() {
 		// cache key handlers bound to this
 		this.boundStart = this.onStart.bind(this);
 		this.boundMoveDuringHold = this.onMoveDuringHold.bind(this);
-		this.boundCancelHold = this.onHoldEnd.bind(this);
+		this.boundCancelHold = this.onCancelHold.bind(this);
 		this.boundMoveDuringDrag = this.onMoveDuringDrag.bind(this);
 		this.boundFinishDrag = this.onDragEnd.bind(this);
 		this.boundHoldTimerComplete = this.onHoldTimerComplete.bind(this);
@@ -108,7 +108,6 @@ $(function() {
 			this.element
 				.off(this.events.move, this.boundMoveDuringHold)
 				.off(this.events.end, this.boundCancelHold);
-			this.setToInitialState.call(this);
 		},
 
 		finishDrag: function() {
@@ -118,7 +117,6 @@ $(function() {
 			this.currentTarget
 				.removeClass(this.options.draggingClass)
 				.css({"z-index":""});
-			this.setToInitialState.call(this);
 		},
 
 		// handlers
@@ -148,17 +146,19 @@ $(function() {
 		},
 
 		onMoveDuringDrag: function(e) {
-			var coords = this.getCoordsFromEvent.call(this, e);
+			this.drag = this.getCoordsFromEvent.call(this, e);
 			e.preventDefault();
-			this.currentTarget.css({top:(coords.y || this.start.y) - this.grab.y, left:(coords.x || this.start.x) - this.grab.x});
+			this.currentTarget.css({top:(this.drag.y || this.start.y) - this.grab.y, left:(this.drag.x || this.start.x) - this.grab.x});
 		},
 
-		onHoldEnd: function(e) {
+		onCancelHold: function(e) {
 			this.cancelHold.call(this);
+			this.setToInitialState.call(this);
 		},
 
 		onDragEnd: function(e) {
 			this.finishDrag.call(this);
+			this.setToInitialState.call(this);
 		},
 
 		// utility
@@ -216,17 +216,20 @@ $(function() {
 
 		finishDrag: function(e) {
 			Push.prototype.finishDrag.call(this);
-			this.currentTarget
-				.on(this.options.returnEvents, this.boundOnReturn)
-				.addClass(this.options.returningClass)
-				.css({
-					"z-index": this.options.zIndex,
-					top:this.offset.top,
-					left:this.offset.left,
-					"transition-property": "top, left",
-					"transition-duration": this.options.returnSpeed+"s"
-				});
-			this.element.off(this.events.start, this.boundStart);
+			if(this.start.x === this.drag.x && this.start.y === drag.hold.y) {
+				this.finishReturn.call(this);
+			} else {
+				this.currentTarget
+					.on(this.options.returnEvents, this.boundOnReturn)
+					.addClass(this.options.returningClass)
+					.css({
+						"z-index": this.options.zIndex,
+						top:this.offset.top,
+						left:this.offset.left,
+						"transition-property": "top, left",
+						"transition-duration": this.options.returnSpeed+"s"
+					});
+			}
 		},
 
 		finishReturn: function() {
@@ -243,7 +246,6 @@ $(function() {
 					"transition-duration": ""
 				})
 				.removeAttr("style");
-			this.setToInitialState.call(this);
 		},
 
 		// handlers
@@ -252,6 +254,7 @@ $(function() {
 		},
 		onReturn: function(e) {
 			this.finishReturn.call(this);
+			this.setToInitialState.call(this);
 		}
 
 	});

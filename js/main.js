@@ -60,7 +60,19 @@ $(function() {
 
 		// methods
 		init: function() {
-			this.element.on(this.events.start, this.boundStart);
+			this.setToInitialState.call(this);
+		},
+
+		setToInitialState: function() {
+			this.element
+				.css({
+					"user-select": "",
+					"touch-callout": "",
+					"user-drag": "",
+					"tap-highlight-color": "",
+					"cursor": ""
+				})
+				.on(this.events.start, this.boundStart);
 		},
 
 		setToHoldState: function() {
@@ -74,8 +86,17 @@ $(function() {
 		setToDragState: function() {
 			this.currentTarget
 				.addClass(this.options.draggingClass)
-				.css({"z-index":this.options.zIndex});
+				.css({
+					"z-index":this.options.zIndex
+				});
 			this.element
+				.css({
+					"user-select": "none",
+					"touch-callout": "none",
+					"user-drag": "none",
+					"tap-highlight-color": "rgba(0,0,0,0)",
+					"cursor": "move"
+				})
 				.off(this.events.move, this.boundMoveDuringHold)
 				.off(this.events.end, this.boundCancelHold)
 				.on(this.events.move, this.boundMoveDuringDrag)
@@ -87,16 +108,17 @@ $(function() {
 			this.element
 				.off(this.events.move, this.boundMoveDuringHold)
 				.off(this.events.end, this.boundCancelHold);
+			this.setToInitialState.call(this);
 		},
 
 		finishDrag: function() {
 			this.element
 				.off(this.events.move, this.boundMoveDuringDrag)
-				.off(this.events.end, this.boundFinishDrag)
-				.on(this.events.start, this.boundStart);
+				.off(this.events.end, this.boundFinishDrag);
 			this.currentTarget
 				.removeClass(this.options.draggingClass)
 				.css({"z-index":""});
+			this.setToInitialState.call(this);
 		},
 
 		// handlers
@@ -207,7 +229,7 @@ $(function() {
 			this.element.off(this.events.start, this.boundStart);
 		},
 
-		setToInitialState: function() {
+		finishReturn: function() {
 			this.$(".placeholder").remove();
 			this.currentTarget
 				.removeClass(this.options.returningClass)
@@ -221,7 +243,7 @@ $(function() {
 					"transition-duration": ""
 				})
 				.removeAttr("style");
-			this.element.on(this.events.start, this.boundStart);
+			this.setToInitialState.call(this);
 		},
 
 		// handlers
@@ -229,7 +251,7 @@ $(function() {
 			this.finishDrag.call(this);
 		},
 		onReturn: function(e) {
-			this.setToInitialState.call(this);
+			this.finishReturn.call(this);
 		}
 
 	});

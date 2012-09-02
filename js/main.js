@@ -25,9 +25,6 @@ $(function() {
 	}
 
 	function Push(options) {
-		if(options && !options.hasOwnProperty("element")) {
-			return;
-		}
 
 		// cache options
 		this.options = $.extend({
@@ -134,6 +131,44 @@ $(function() {
 		});
 	}
 
+
+	function Order() {
+		Push.call(this);
+	}
+	Order.prototype = new Push();
+	$.extend(Order.prototype, {
+		
+		constructor: Order,
+
+		onStart: function(e) {
+			Push.prototype.onStart.call(this, e);
+			if($(e.target).is(this.options.draggableSelector)) {
+				var offset = this.currentTarget.offset();
+				this.cachedTop = offset.top;
+				this.cachedLeft = offset.left;
+			}
+		},
+
+		onHoldTimerComplete: function() {
+			this.element.off(this.events.move, this.onMoveDuringHold.bind(this));
+			if(Math.sqrt(Math.pow(this.hold.x - this.start.x, 2) + Math.pow(this.hold.y - this.start.y, 2)) < this.options.dragCancelThreshold) {
+				this.currentStartEvent.preventDefault();
+				this.currentTarget
+					.css({top:this.cachedTop, left:this.cachedLeft})
+					.addClass(this.options.draggingClass)
+					.after($('<li class="placeholder" style="border:1px solid red;height:'+this.currentTarget.height()+'px;width:'+this.currentTarget.width()+'px;"></li>'));
+				this.element.on(this.events.move, this.boundMoveDuringDrag);
+			}
+		},
+
+		onEnd: function(e) {
+			this.$(".placeholder").remove();
+			this.currentTarget.css({top:"",left:""});
+			Push.prototype.onEnd.call(this, e);
+		}
+	});
+
+
 	window.mySwipe = new Swipe(document.getElementById('slider'), {
 	    speed: 400,
 	    auto: 0,
@@ -143,6 +178,7 @@ $(function() {
 
 	    }
 	});
-	window.push = new Push();
+	// window.push = new Push();
+	window.order = new Order();
 
 });

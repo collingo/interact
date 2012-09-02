@@ -29,7 +29,7 @@ body > ul > li {
 	border:1px solid black;
 	background:lightgreen;
 	margin:0 20px 20px 0;
-	position:absolute;
+	/*position:absolute;*/
 	-webkit-transform: translateZ(0);
 	-webkit-transition: background 0.2s;
 	-moz-transition: background 0.2s;
@@ -41,6 +41,7 @@ body > ul li.dragging {
 	z-index:100;
 	background:pink;
 	cursor:move;
+	position:absolute;
 }
 
 ul li#slider {

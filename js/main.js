@@ -186,7 +186,7 @@ $(function() {
 			Push.prototype.setToDragState.call(this);
 			this.currentTarget
 				.css({position:"absolute",top:this.offset.top, left:this.offset.left})
-				.after($('<li class="placeholder" style="border:1px solid red;height:'+this.currentTarget.height()+'px;width:'+this.currentTarget.width()+'px;"></li>'));
+				.after($('<li class="placeholder" style="height:'+this.currentTarget.outerHeight()+'px;width:'+this.currentTarget.outerWidth()+'px;"></li>'));
 		},
 
 		finishDrag: function(e) {

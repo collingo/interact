@@ -37,11 +37,17 @@ body > ul > li {
 	-o-transition: background 0.2s;
 	transition: background 0.2s;
 }
-body > ul li.dragging {
-	z-index:100;
+body > ul li.dragging, body > ul li.returning {
 	background:pink;
 	cursor:move;
-	position:absolute;
+	opacity:0.6;
+}
+body > ul li.returning {
+	/*-webkit-transition: all 0.35s;
+	-moz-transition: all 0.35s;
+	-ms-transition: all 0.35s;
+	-o-transition: all 0.35s;
+	transition: all 0.35s;*/
 }
 
 ul li#slider {

@@ -32,20 +32,20 @@ $(function() {
 			draggableSelector: "li",
 			draggingClass: "dragging",
 			dragActiveDelay: 200,
-			dragCancelThreshold: 30
+			dragCancelThreshold: 30,
+			zIndex: 100
 		}, options || {});
 
 		// cache elements
 		this.element = $(this.options.element);
 
 		// cache key handlers bound to this
-		this.boundEnd = this.onEnd.bind(this);
 		this.boundMoveDuringHold = this.onMoveDuringHold.bind(this);
+		this.boundCancelHold = this.onHoldEnd.bind(this);
 		this.boundMoveDuringDrag = this.onMoveDuringDrag.bind(this);
+		this.boundFinishDrag = this.onDragEnd.bind(this);
 		this.boundHoldTimerComplete = this.onHoldTimerComplete.bind(this);
 
-		// initialise
-		this.element.on(this.events.start, this.onStart.bind(this));
 	}
 	Push.prototype = {
 		constructor: Push,
@@ -57,21 +57,56 @@ $(function() {
 			end: "mouseup"
 		},
 
+		// methods
+		init: function() {
+			this.element.on(this.events.start, this.onStart.bind(this));
+		},
+
+		setToHoldState: function() {
+			this.element
+				.on(this.events.move, this.boundMoveDuringHold)
+				.on(this.events.end, this.boundCancelHold);
+			this.holdTimer = setTimeout(this.boundHoldTimerComplete, this.options.dragActiveDelay);
+		},
+
+		setToDragState: function() {
+			this.currentTarget
+				.addClass(this.options.draggingClass)
+				.css({"z-index":this.options.zIndex});
+			this.element
+				.off(this.events.move, this.boundMoveDuringHold)
+				.off(this.events.end, this.boundCancelHold)
+				.on(this.events.move, this.boundMoveDuringDrag)
+				.on(this.events.end, this.boundFinishDrag);
+		},
+
+		cancelHold: function() {
+			clearTimeout(this.holdTimer);
+			this.element
+				.off(this.events.move, this.boundMoveDuringHold)
+				.off(this.events.end, this.boundCancelHold);
+		},
+
+		finishDrag: function() {
+			this.element
+				.off(this.events.move, this.boundMoveDuringDrag)
+				.off(this.events.end, this.boundFinishDrag);
+			this.currentTarget
+				.removeClass(this.options.draggingClass)
+				.css({"z-index":""});
+		},
+
 		// handlers
 		onStart: function(e) {
-			if($(e.target).is(this.options.draggableSelector)) {
+			this.currentTarget = $(e.target);
+			if(this.currentTarget.is(this.options.draggableSelector)) {
 
 				this.start = this.hold = this.grab = this.getCoordsFromEvent.call(this, e);
-				this.grab.x = this.grab.x - e.target.offsetLeft;
-				this.grab.y = this.grab.y - e.target.offsetTop;
-				this.currentTarget = $(e.target);
-				this.currentStartEvent = e;
+				this.offset = this.currentTarget.offset();
+				this.grab.x = this.grab.x - this.offset.left;
+				this.grab.y = this.grab.y - this.offset.top;
 
-				this.element
-					.on(this.events.move, this.boundMoveDuringHold)
-					.on(this.events.end, this.boundEnd);
-
-				this.holdTimer = setTimeout(this.boundHoldTimerComplete, this.options.dragActiveDelay);
+				this.setToHoldState.call(this);
 
 			}
 		},
@@ -79,9 +114,7 @@ $(function() {
 		onHoldTimerComplete: function() {
 			this.element.off(this.events.move, this.onMoveDuringHold.bind(this));
 			if(Math.sqrt(Math.pow(this.hold.x - this.start.x, 2) + Math.pow(this.hold.y - this.start.y, 2)) < this.options.dragCancelThreshold) {
-				this.currentStartEvent.preventDefault();
-				this.currentTarget.addClass(this.options.draggingClass);
-				this.element.on(this.events.move, this.boundMoveDuringDrag);
+				this.setToDragState.call(this);
 			}
 		},
 
@@ -95,12 +128,12 @@ $(function() {
 			this.currentTarget.css({top:(coords.y || this.start.y) - this.grab.y, left:(coords.x || this.start.x) - this.grab.x});
 		},
 
-		onEnd: function(e) {
-			clearTimeout(this.holdTimer);
-			this.element.off(this.events.end, this.boundEnd);
-			this.element.off(this.events.move, this.boundMoveDuringHold);
-			this.element.off(this.events.move, this.boundMoveDuringDrag);
-			this.$(this.options.draggableSelector).removeClass(this.options.draggingClass);
+		onHoldEnd: function(e) {
+			this.cancelHold.call(this);
+		},
+
+		onDragEnd: function(e) {
+			this.finishDrag.call(this);
 		},
 
 		// utility
@@ -132,40 +165,58 @@ $(function() {
 	}
 
 
-	function Order() {
-		Push.call(this);
+	function Order(options) {
+		Push.call(this, options);
+
+		$.extend(this.options, {
+			returningClass: "returning",
+			returnEvents: 'transitionend webkitTransitionEnd oTransitionEnd',
+			returnSpeed: 0.35
+		});
+
+		this.boundOnReturn = this.onReturn.bind(this);
 	}
 	Order.prototype = new Push();
 	$.extend(Order.prototype, {
 		
 		constructor: Order,
 
-		onStart: function(e) {
-			Push.prototype.onStart.call(this, e);
-			if($(e.target).is(this.options.draggableSelector)) {
-				var offset = this.currentTarget.offset();
-				this.cachedTop = offset.top;
-				this.cachedLeft = offset.left;
-			}
+		// methods
+		setToDragState: function() {
+			Push.prototype.setToDragState.call(this);
+			this.currentTarget
+				.css({position:"absolute",top:this.offset.top, left:this.offset.left})
+				.after($('<li class="placeholder" style="border:1px solid red;height:'+this.currentTarget.height()+'px;width:'+this.currentTarget.width()+'px;"></li>'));
 		},
 
-		onHoldTimerComplete: function() {
-			this.element.off(this.events.move, this.onMoveDuringHold.bind(this));
-			if(Math.sqrt(Math.pow(this.hold.x - this.start.x, 2) + Math.pow(this.hold.y - this.start.y, 2)) < this.options.dragCancelThreshold) {
-				this.currentStartEvent.preventDefault();
-				this.currentTarget
-					.css({top:this.cachedTop, left:this.cachedLeft})
-					.addClass(this.options.draggingClass)
-					.after($('<li class="placeholder" style="border:1px solid red;height:'+this.currentTarget.height()+'px;width:'+this.currentTarget.width()+'px;"></li>'));
-				this.element.on(this.events.move, this.boundMoveDuringDrag);
-			}
+		finishDrag: function(e) {
+			Push.prototype.finishDrag.call(this);
+			this.currentTarget
+				.on(this.options.returnEvents, this.boundOnReturn)
+				.addClass(this.options.returningClass)
+				.css({
+					top:this.offset.top,
+					left:this.offset.left,
+					transition: "all "+this.options.returnSpeed+"s"
+				});
 		},
 
-		onEnd: function(e) {
+		setToInitialState: function() {
 			this.$(".placeholder").remove();
-			this.currentTarget.css({top:"",left:""});
-			Push.prototype.onEnd.call(this, e);
+			this.currentTarget
+				.removeClass(this.options.returningClass)
+				.off(this.options.returnEvents, this.boundOnReturn)
+				.removeAttr("style");
+		},
+
+		// handlers
+		onDragEnd: function(e) {
+			this.finishDrag.call(this);
+		},
+		onReturn: function(e) {
+			this.setToInitialState.call(this);
 		}
+
 	});
 
 
@@ -179,6 +230,8 @@ $(function() {
 	    }
 	});
 	// window.push = new Push();
+	// window.push.init();
 	window.order = new Order();
+	window.order.init();
 
 });

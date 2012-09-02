@@ -195,9 +195,11 @@ $(function() {
 				.on(this.options.returnEvents, this.boundOnReturn)
 				.addClass(this.options.returningClass)
 				.css({
+					"z-index": this.options.zIndex,
 					top:this.offset.top,
 					left:this.offset.left,
-					transition: "all "+this.options.returnSpeed+"s"
+					"transition-property": "top, left",
+					"transition-duration": this.options.returnSpeed+"s"
 				});
 		},
 

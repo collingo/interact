@@ -38,7 +38,6 @@ $(function() {
 
 		// cache elements
 		this.element = $(this.options.elementSelector);
-		this.coords.start = this.coords.offset = this.coords.grab = this.coords.hold = this.coords.drag = {};
 
 		// cache key handlers bound to this
 		this.boundStart = this.onStart.bind(this);
@@ -87,20 +86,24 @@ $(function() {
 		onStart: function(e) {
 			this.setCurrentTarget.call(this, $(e.target));
 			this.setStartCoords.call(this, this.getCoordsFromEvent.call(this, e));
-			if(this.isCurrentTargetValidElement.call(this)) {
+			if(this.currentTarget.length) {
 				this.takedownInactiveState.call(this);
 				this.setupHoldState.call(this);
 			}
 		},
 
 		// helpers
-		isCurrentTargetValidElement: function() {
-			return this.currentTarget.is(this.options.draggableSelector);
+		isValidElement: function(element) {
+			return element.is(this.options.draggableSelector);
 		},
 
 		// methods
 		setCurrentTarget: function(target) {
-			this.currentTarget = target;
+			if(this.isValidElement.call(this, target)) {
+				this.currentTarget = target;
+			} else {
+				this.currentTarget = target.closest(this.options.draggableSelector);
+			}
 		},
 
 		setStartCoords: function(coords) {
@@ -260,7 +263,7 @@ $(function() {
 			returnSpeed: 0.35
 		});
 
-		this.placeholder = $('<li class="placeholder"></li>');
+		this.placeholder = $('<li class="placeholder"><div></div></li>');
 
 		this.boundReturn = this.onReturn.bind(this);
 	}
@@ -282,10 +285,6 @@ $(function() {
 			this.currentTarget
 				.css({position:"absolute",top:this.coords.offset.top, left:this.coords.offset.left})
 				.after(this.placeholder);
-		},
-
-		takedownDragState: function() {
-			Push.prototype.takedownDragState.call(this);
 		},
 
 		// handlers

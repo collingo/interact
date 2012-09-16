@@ -24,7 +24,7 @@ $(function() {
 		};
 	}
 
-	function Push(options) {
+	function Order(options) {
 
 		// cache options
 		this.options = $.extend({
@@ -33,11 +33,15 @@ $(function() {
 			draggingClass: "dragging",
 			dragActiveDelay: 200,
 			dragCancelThreshold: 30,
-			zIndex: 100
+			zIndex: 100,
+			returningClass: "returning",
+			returnEvents: 'transitionend webkitTransitionEnd oTransitionEnd',
+			returnSpeed: 0.35
 		}, options || {});
 
 		// cache elements
 		this.element = $(this.options.elementSelector);
+		this.placeholder = $('<li class="placeholder"><div></div></li>');
 
 		// cache key handlers bound to this
 		this.boundStart = this.onStart.bind(this);
@@ -46,10 +50,11 @@ $(function() {
 		this.boundMoveDuringDrag = this.onMoveDuringDrag.bind(this);
 		this.boundendDrag = this.onDragEnd.bind(this);
 		this.boundHoldTimerComplete = this.onHoldTimerComplete.bind(this);
+		this.boundReturn = this.onReturn.bind(this);
 
 	}
-	Push.prototype = {
-		constructor: Push,
+	Order.prototype = {
+		constructor: Order,
 
 		// properties
 		events: {
@@ -75,7 +80,8 @@ $(function() {
 		// INACTIVE STATE
 
 		setupInactiveState: function() {
-			this.element.on(this.events.start, this.boundStart);
+			this.element
+				.on(this.events.start, this.boundStart);
 		},
 
 		takedownInactiveState: function() {
@@ -136,6 +142,9 @@ $(function() {
 		},
 
 		onCancelHold: function(e) {
+			if(this.isWithinBounds.call(this)) {
+				$(e.target).trigger('tap');
+			}
 			this.cancelHoldTimer.call(this);
 			this.takedownHoldState.call(this);
 			this.setupInactiveState.call(this);
@@ -170,15 +179,10 @@ $(function() {
 			
 		setupDragState: function() {
 
+			this.coords.drag = this.coords.start;
 			this.coords.offset = this.currentTarget.offset();
 			this.coords.grab.x = this.coords.start.x - this.coords.offset.left;
 			this.coords.grab.y = this.coords.start.y - this.coords.offset.top;
-
-			this.currentTarget
-				.addClass(this.options.draggingClass)
-				.css({
-					"z-index":this.options.zIndex
-				});
 
 			this.element
 				.css({
@@ -190,6 +194,22 @@ $(function() {
 				})
 				.on(this.events.move, this.boundMoveDuringDrag)
 				.on(this.events.end, this.boundendDrag);
+
+			this.placeholder
+				.css({
+					height: this.currentTarget.outerHeight(),
+					width: this.currentTarget.outerWidth()
+				});
+
+			this.currentTarget
+				.addClass(this.options.draggingClass)
+				.css({
+					"z-index":this.options.zIndex,
+					position:"absolute",
+					top:this.coords.offset.top,
+					left:this.coords.offset.left
+				})
+				.after(this.placeholder);
 		},
 
 		takedownDragState: function() {
@@ -217,78 +237,7 @@ $(function() {
 		},
 
 		onDragEnd: function(e) {
-			this.takedownDragState.call(this);
-			this.setupInactiveState.call(this);
-		},
-		
-		// methods
-		updateTargetPosition: function(coords) {
-			this.coords.drag = coords;
-			this.currentTarget.css({top:(this.coords.drag.y || this.coords.start.y) - this.coords.grab.y, left:(this.coords.drag.x || this.coords.start.x) - this.coords.grab.x});
-		},
-
-		// END DRAGGING STATE
-
-		// GLOBAL UTILITY
-		getCoordsFromEvent: function(event) {
-			return { x: event.pageX, y: event.pageY };
-		},
-
-		$: function(selector, scope) {
-			return $(selector, scope || this.element);
-		}
-	}
-
-	// override prototype with touch specific properties and methods
-	if('ontouchstart' in window) {
-		$.extend(Push.prototype, {
-			events : {
-				start: "touchstart",
-				move: "touchmove",
-				end: "touchend"
-			},
-			getCoordsFromEvent: function( event ) {
-				return { x: event.originalEvent.touches[0].pageX, y: event.originalEvent.touches[0].pageY };
-			}
-		});
-	}
-
-
-	function Order(options) {
-		Push.call(this, options);
-
-		$.extend(this.options, {
-			returningClass: "returning",
-			returnEvents: 'transitionend webkitTransitionEnd oTransitionEnd',
-			returnSpeed: 0.35
-		});
-
-		this.placeholder = $('<li class="placeholder"><div></div></li>');
-
-		this.boundReturn = this.onReturn.bind(this);
-	}
-	Order.prototype = new Push();
-	$.extend(Order.prototype, {
-		
-		constructor: Order,
-
-		// DRAG STATE OVERRIDES
-		
-		setupDragState: function() {
-			Push.prototype.setupDragState.call(this);
-			this.coords.drag = this.coords.start;
-			this.placeholder
-				.css({
-					height: this.currentTarget.outerHeight(),
-					width: this.currentTarget.outerWidth()
-				});
-			this.currentTarget
-				.css({position:"absolute",top:this.coords.offset.top, left:this.coords.offset.left})
-				.after(this.placeholder);
-		},
-
-		// handlers
-		onDragEnd: function(e) {
+			e.preventDefault();
 			this.takedownDragState.call(this);
 			if(this.hasMoved.call(this)) {
 				this.setupReturnState.call(this);
@@ -302,6 +251,12 @@ $(function() {
 		hasMoved: function() {
 			return (this.coords.start.x !== this.coords.drag.x || this.coords.start.y !== this.coords.drag.y);
 		},
+		
+		// methods
+		updateTargetPosition: function(coords) {
+			this.coords.drag = coords;
+			this.currentTarget.css({top:(this.coords.drag.y || this.coords.start.y) - this.coords.grab.y, left:(this.coords.drag.x || this.coords.start.x) - this.coords.grab.x});
+		},
 
 		cleanUpDragState: function() {
 			this.placeholder.remove();
@@ -310,8 +265,9 @@ $(function() {
 				.removeAttr("style");
 		},
 
-		// END DRAG STATE OVERRIDES
-		
+
+		// END DRAGGING STATE
+
 		// RETURN STATE
 		
 		setupReturnState: function() {
@@ -347,12 +303,33 @@ $(function() {
 		onReturn: function(e) {
 			this.takedownReturnState.call(this);
 			this.setupInactiveState.call(this);
-		}
+		},
 
 		// END RETURN STATE
 
-	});
+		// GLOBAL UTILITY
+		getCoordsFromEvent: function(event) {
+			return { x: event.pageX, y: event.pageY };
+		},
 
+		$: function(selector, scope) {
+			return $(selector, scope || this.element);
+		}
+	}
+
+	// override prototype with touch specific properties and methods
+	if('ontouchstart' in window) {
+		$.extend(Order.prototype, {
+			events : {
+				start: "touchstart",
+				move: "touchmove",
+				end: "touchend"
+			},
+			getCoordsFromEvent: function( event ) {
+				return { x: event.originalEvent.touches[0].pageX, y: event.originalEvent.touches[0].pageY };
+			}
+		});
+	}
 
 	window.mySwipe = new Swipe(document.getElementById('slider'), {
 	    speed: 400,
@@ -363,9 +340,12 @@ $(function() {
 
 	    }
 	});
-	// window.push = new Push();
-	// window.push.init();
 	window.order = new Order();
 	window.order.init();
+
+
+	$('li div').on('tap', function(e) {
+		$(this).parent().toggleClass('expanded');
+	});
 
 });

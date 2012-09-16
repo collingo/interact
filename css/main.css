@@ -37,6 +37,9 @@ body > ul > li {
 	-moz-box-sizing:border-box;
 	box-sizing:border-box;
 }
+body > ul > li.expanded {
+	height:400px;
+}
 body > ul > li > div {
 	border:1px solid black;
 	background:lightgreen;
